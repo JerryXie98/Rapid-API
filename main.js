@@ -15,10 +15,10 @@ const config = {
   "auth_provider_x509_cert_url": process.env.AUTH_PROVIDER,
   "client_x509_cert_url": process.env.CLIENT_CERT
 }
-// admin.initializeApp({
-//   credential: admin.credential.cert(config),
-//   databaseURL: 'https://rapid-14d88.firebaseio.com'
-// })
+admin.initializeApp({
+  credential: admin.credential.cert(config),
+  databaseURL: 'https://rapid-14d88.firebaseio.com'
+})
 
 var app = express()
 app.use(bodyParser.json())
@@ -200,4 +200,4 @@ function insert(dbName, data) {
   return id
 }
 
-app.listen(process.env.PORT, () => console.log('Example app listening on port 3000! ' + process.env.PRIVATE_KEY))
+app.listen(process.env.PORT, () => console.log('Example app listening on port 3000!'))
