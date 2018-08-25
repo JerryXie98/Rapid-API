@@ -74,8 +74,21 @@ app.post('/api/users/:userId/contribute', (req, res) => {
 
 // Get all users
 app.get('/api/users', (req, res) => {
+  email = req.query['email']
+
   admin.database().ref().child('users').once('value').then((snap) => {
-    res.send(snap.val())
+    if (email) {
+      data = snap.val()
+      filtered = Object.keys(data).filter(el => data[el]['email'] == email)
+      if (filtered.length == 1) {
+        res.send(data[filtered[0]])
+      } else {
+        res.status(404).send({'Error': 'No single user with email: ' + email + ' found.'})
+      }
+      res.send(Object.keys(data).filter(el => data[el]['email'] == email))
+    } else {
+      res.send(snap.val())
+    }
   })
 })
 
@@ -95,7 +108,9 @@ app.get('/api/users/:userId', (req, res) => {
 // Add user
 app.post('/api/users', (req, res) => {
   data = {
-    'name': req.body['name']
+    'name': req.body['name'],
+    'email': req.body['email'],
+    'password': req.body['password']
   }
 
   const userId = insert('users', data)
@@ -106,7 +121,9 @@ app.post('/api/users', (req, res) => {
 app.put('api/users/:userId', (req, res) => {
   const userId = req.params['userId']
   data = {
-    'name': req.body['name']
+    'name': req.body['name'],
+    'email': req.body['email'],
+    'password': req.body['password']
   }
 
   admin.database().ref('users/' + userId).set(data)
@@ -200,4 +217,4 @@ function insert(dbName, data) {
   return id
 }
 
-app.listen(process.env.PORT, () => console.log('Example app listening on port 3000!'))
+app.listen(process.env.PORT ? process.env.PORT : 3000, () => console.log('Example app listening on port 3000!'))
