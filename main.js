@@ -34,10 +34,7 @@ app.get('/api/login', (req, res) => {
     filtered = Object.keys(data).forEach(el => {
       if (data[el]['email'] == email) {
         if (data[el]['password'] == password) {
-          res.send({
-            'Success': 'User authentication successful.', 
-            'user': data[el]
-          })
+          res.send({'user': data[el]})
         } else {
           res.status(401).send({'Error': 'Authentication failed.'})
         }
