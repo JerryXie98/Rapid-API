@@ -15,15 +15,15 @@ const config = {
   "auth_provider_x509_cert_url": process.env.AUTH_PROVIDER,
   "client_x509_cert_url": process.env.CLIENT_CERT
 }
-admin.initializeApp({
-  credential: admin.credential.cert(config),
-  databaseURL: 'https://rapid-14d88.firebaseio.com'
-})
+// admin.initializeApp({
+//   credential: admin.credential.cert(config),
+//   databaseURL: 'https://rapid-14d88.firebaseio.com'
+// })
 
 var app = express()
 app.use(bodyParser.json())
 
-app.get('/', (req, res) => res.send('Rapid API is up and running!'))
+app.get('/', (req, res) => res.send('Rapid API is up and running! ' + config['private_key']))
 
 
 // User Routes
