@@ -42,26 +42,24 @@ app.get('/api/login', (req, res) => {
     })
     res.status(404).send({'Error': 'No user found.'})
   })
-
 })
 
 // User Routes
 
 // Add user to group
-app.post('/api/users/:userId/addGroup', (req, res) => {
-  userId = req.params['userId']
-  groupId = req.query.groupId
-  data = {
-    'userName': req.body['userName'],
-    'groupName': req.body['groupName']
-  }
+app.post('/api/users/:userId/addGroup', async (req, res) => {
+  const userId = req.params['userId']
+  const groupId = req.query['groupId']
   
-  updates = {}
-  updates['/groups/' + groupId + '/users/' + userId] = data.userName  
-  updates['/users/' + userId + '/groups/' + groupId] = data.groupName
+  let user = await admin.database().ref('/users/' + userId).once('value')
+  let group = await admin.database().ref('/groups/' + groupId).once('value')
+  
+  let updates = {}
+  updates['/groups/' + groupId + '/users/' + userId] = {'name': user.val()['name'], 'email': user.val()['email']}
+  updates['/users/' + userId + '/groups/' + groupId] = {'name': group.val()['name'], 'funds': group.val()['funds']}
   admin.database().ref().update(updates)
 
-  res.send({'Success': data.userName + ' was added to: ' + data.groupName + '.'})
+  res.send({'Success': user.val()['name'] + ' was added to: ' + group.val()['name'] + '.'})
 })
 
 // Contribute to pool
