@@ -25,6 +25,28 @@ app.use(bodyParser.json())
 
 app.get('/', (req, res) => res.send('Rapid API is up and running! ' + config['private_key']))
 
+app.get('/api/login', (req, res) => {
+  email = req.query['email']
+  password = req.query['password']
+
+  admin.database().ref().child('users').once('value').then((snap) => {
+    data = snap.val()
+    filtered = Object.keys(data).forEach(el => {
+      if (data[el]['email'] == email) {
+        if (data[el]['password'] == password) {
+          res.send({
+            'Success': 'User authentication successful.', 
+            'user': data[el]
+          })
+        } else {
+          res.status(404).send({'Error': 'Incorrect authentication.'})
+        }
+      }
+    })
+    res.status(404).send({'Error': 'No user found.'})
+  })
+
+})
 
 // User Routes
 
