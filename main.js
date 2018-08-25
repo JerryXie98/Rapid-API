@@ -39,7 +39,7 @@ app.get('/api/login', (req, res) => {
             'user': data[el]
           })
         } else {
-          res.status(404).send({'Error': 'Incorrect authentication.'})
+          res.status(401).send({'Error': 'Authentication failed.'})
         }
       }
     })
