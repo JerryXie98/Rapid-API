@@ -166,6 +166,19 @@ app.get('/api/transactions', (req, res) => {
   })
 })
 
+// Get Transction by Id
+app.get('/api/transactions/:transId', (req, res) => {
+  transId = req.params['transId']
+
+  admin.database().ref('/transactions/' + transId).once('value').then((snap) => {
+    if (snap.val() != null) {
+      res.send(snap.val())
+    } else {
+      res.status(404).send({'Error': 'No transaction found.'})
+    }
+  })
+})
+
 // Clear database
 app.delete('/api/clear', (req, res) => {
   updates = {}
