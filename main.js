@@ -3,9 +3,20 @@ var admin = require('firebase-admin')
 const bodyParser = require('body-parser');
 
 // Firebase setup
-const serviceAccount = require('./serviceAccountKey.json')
+const config = {
+  "type": process.env.TYPE,
+  "project_id": process.env.PROJECT_ID,
+  "private_key_id": process.env.PRIVATE_KEY_ID,
+  "private_key": process.env.PRIVATE_KEY,
+  "client_email": process.env.CLIENT_EMAIL,
+  "client_id": process.env.CLIENT_ID,
+  "auth_uri": process.env.AUTH_URI,
+  "token_uri": process.env.TOKEN_URI,
+  "auth_provider_x509_cert_url": process.env.AUTH_PROVIDER,
+  "client_x509_cert_url": process.env.CLIENT_CERT
+}
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(config),
   databaseURL: 'https://rapid-14d88.firebaseio.com'
 })
 
@@ -21,7 +32,6 @@ app.get('/', (req, res) => res.send('Rapid API is up and running!'))
 app.post('/api/users/:userId/addGroup', (req, res) => {
   userId = req.params['userId']
   groupId = req.query.groupId
-  console.log(groupId)
   data = {
     'userName': req.body['userName'],
     'groupName': req.body['groupName']
@@ -74,7 +84,11 @@ app.get('/api/users/:userId', (req, res) => {
   userId = req.params['userId']
 
   admin.database().ref('/users/' + userId).once('value').then((snap) => {
-    res.send(snap.val())
+    if (snap.val() != null) {
+      res.send(snap.val())
+    } else {
+      res.status(404).send({'Error': 'No user found.'})
+    }
   })
 })
 
@@ -114,7 +128,11 @@ app.get('/api/groups/:groupId', (req, res) => {
   groupId = req.params['groupId']
 
   admin.database().ref('/groups/' + groupId).once('value').then((snap) => {
-    res.send(snap.val())
+    if (snap.val() != null) {
+      res.send(snap.val())
+    } else {
+      res.status(404).send({'Error': 'No group found.'})
+    }
   })
 })
 
