@@ -82,11 +82,13 @@ app.post('/api/users/:userId/contribute', async (req, res) => {
   // Update table funds
   let groupFunds = await admin.database().ref('/groups/' + data.groupId + '/funds').once('value')
   let userFunds = await admin.database().ref('/users/' + data.userId + '/funds').once('value')
+  const newGroupFund = parseFloat(groupFunds.val()) + parseFloat(data.amount)
+  const newUserFund = parseFloat(userFunds.val()) - parseFloat(data.amount)
 
-  if (userFunds.val() > data.amount) {
+  if (newUserFund > 0) {
     updates = {}
-    updates['/groups/' + data.groupId + '/funds'] = parseFloat(groupFunds.val()) + parseFloat(data.amount)
-    updates['/users/' + data.userId + '/funds'] = parseFloat(userFunds.val()) - parseFloat(data.amount)
+    updates['/groups/' + data.groupId + '/funds'] = newGroupFund
+    updates['/users/' + data.userId + '/funds'] = newUserFund
     admin.database().ref().update(updates)
 
     // Add transaction
@@ -95,6 +97,16 @@ app.post('/api/users/:userId/contribute', async (req, res) => {
     trans['/groups/' + data.groupId + '/transactions/' + transId] = data
     trans['/users/' + userId +  '/transactions/' + transId] = data
     admin.database().ref().update(trans)
+
+    // Update group info under users
+    userUpdates = {}
+    let users = await admin.database().ref('/groups/' + data.groupId + '/users').once('value')
+    let groupName = await admin.database().ref('/groups/' + data.groupId + '/name').once('value') 
+    const userIdArray = Object.keys(users.val())
+    userIdArray.forEach(uid => {
+      userUpdates['/users/' + uid + '/groups/' + data.groupId] = {'name': groupName.val(), 'funds': newGroupFund}
+    })
+    admin.database().ref().update(userUpdates)
 
     res.send({'Success': 'Transaction: ' + transId + ' was processed.'})
   } else {
