@@ -1,6 +1,7 @@
 const express = require('express')
 var admin = require('firebase-admin')
-const bodyParser = require('body-parser');
+const bodyParser = require('body-parser')
+var paypal = require('paypal-rest-sdk')
 
 // Firebase setup
 const config = {
@@ -19,6 +20,12 @@ admin.initializeApp({
   credential: admin.credential.cert(config),
   databaseURL: 'https://rapid-14d88.firebaseio.com'
 })
+
+// paypal.configure({
+//   'mode': 'sandbox', //sandbox or live
+//   'client_id': process.env.PAYPAL_CLIENT,
+//   'client_secret': process.env.PAYPAL_SECRET
+// })
 
 var app = express()
 app.use(bodyParser.json())
@@ -63,7 +70,7 @@ app.post('/api/users/:userId/addGroup', async (req, res) => {
 })
 
 // Contribute to pool
-app.post('/api/users/:userId/contribute', (req, res) => {
+app.post('/api/users/:userId/contribute', async (req, res) => {
   const userId = req.params['userId']
   data = {
     'userId': userId,
@@ -72,21 +79,27 @@ app.post('/api/users/:userId/contribute', (req, res) => {
   }
   const transId = admin.database().ref().child('transctions').push().key
 
-  // Update transactions for relevant tables
-  var updates = {}
-  updates['/transactions/' + transId] = data
-  updates['/groups/' + data.groupId + '/transactions/' + transId] = data
-  updates['/users/' + userId +  '/transactions/' + transId] = data
-  admin.database().ref().update(updates)
-  
   // Update table funds
-  admin.database().ref('/groups/' + data.groupId + '/funds').once('value').then((snap) => {
-    update = {}
-    update['/groups/' + data.groupId + '/funds'] = parseFloat(snap.val()) + parseFloat(data.amount)
-    admin.database().ref().update(update)
-  })
+  let groupFunds = await admin.database().ref('/groups/' + data.groupId + '/funds').once('value')
+  let userFunds = await admin.database().ref('/users/' + data.userId + '/funds').once('value')
 
-  res.send({'Success': 'Transaction: ' + transId + ' was processed.'})
+  if (userFunds.val() > data.amount) {
+    updates = {}
+    updates['/groups/' + data.groupId + '/funds'] = parseFloat(groupFunds.val()) + parseFloat(data.amount)
+    updates['/users/' + data.userId + '/funds'] = parseFloat(userFunds.val()) - parseFloat(data.amount)
+    admin.database().ref().update(updates)
+
+    // Add transaction
+    var trans = {}
+    trans['/transactions/' + transId] = data
+    trans['/groups/' + data.groupId + '/transactions/' + transId] = data
+    trans['/users/' + userId +  '/transactions/' + transId] = data
+    admin.database().ref().update(trans)
+
+    res.send({'Success': 'Transaction: ' + transId + ' was processed.'})
+  } else {
+    res.status(422).send({'Error': 'Insufficient funds.'})
+  }
 })
 
 // Get all users
@@ -127,7 +140,8 @@ app.post('/api/users', (req, res) => {
   data = {
     'name': req.body['name'],
     'email': req.body['email'],
-    'password': req.body['password']
+    'password': req.body['password'],
+    'funds': req.body['funds']
   }
 
   const userId = insert('users', data)
@@ -135,16 +149,27 @@ app.post('/api/users', (req, res) => {
 })
 
 // Update user
-app.put('api/users/:userId', (req, res) => {
+app.put('/api/users/:userId', (req, res) => {
   const userId = req.params['userId']
   data = {
     'name': req.body['name'],
     'email': req.body['email'],
-    'password': req.body['password']
+    'password': req.body['password'],
+    'funds': req.body['funds']
   }
 
-  admin.database().ref('users/' + userId).set(data)
+  admin.database().ref('/users/' + userId).set(data)
   res.send({'id': userId})
+})
+
+// Delete user
+app.delete('/api/users/:userId', (req, res) => {
+  const userId = req.params['userId']
+  let updates = {}
+  updates['/users/' + userId] = null
+  admin.database().ref().update(updates)
+
+  res.send({'Success': 'Group removed.'})
 })
 
 
@@ -182,15 +207,25 @@ app.post('/api/groups', (req, res) => {
 })
 
 // Update group
-app.put('api/groups/:groupId', (req, res) => {
+app.put('/api/groups/:groupId', (req, res) => {
   const groupId = req.params['groupId']
   data = {
     'name': req.body['name'],
     'funds': req.funds['funds']
   }
 
-  admin.database().ref('groups/' + groupId).set(data)
+  admin.database().ref('/groups/' + groupId).set(data)
   res.send({'id': groupId})
+})
+
+// Delete group
+app.delete('/api/groups/:groupId', (req, res) => {
+  const groupId = req.params['groupId']
+  let updates = {}
+  updates['/groups/' + groupId] = null
+  admin.database().ref().update(updates)
+
+  res.send({'Success': 'Group removed.'})
 })
 
 // Get Transactions
@@ -222,6 +257,17 @@ app.delete('/api/clear', (req, res) => {
   admin.database().ref().update(updates)
 
   res.send({'Success': 'Database cleared.'})
+})
+
+// Clear element
+// Example: users/aweduasi13 delete user with that id: aweduasi13
+app.delete('/api/clear/:elementString', (req, res) => {
+  const elementString = req.params['elementString']
+  let updates = {}
+  updates['/' + elementString]
+  admin.database().ref().update(updates)
+
+  res.send({'Success': 'Element cleared.'})
 })
 
 function insert(dbName, data) {
